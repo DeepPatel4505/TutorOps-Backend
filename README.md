@@ -46,8 +46,7 @@ backend/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/tutorops.git
-cd tutorops/backend
+git clone https://github.com/DeepPatel4505/TutorOps-Backend.git
 ````
 
 ### 2. Install dependencies
