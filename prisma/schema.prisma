@@ -16,9 +16,116 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
+  name      String
+  username  String?  @unique
   email     String   @unique
-  name      String?
-  password  String?  
+  password  String?
+  googleId String?  @unique
+  role      Role
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  // Relations
+  classesTaught   Class[]      @relation("TeacherClasses")
+  enrollments     Enrollment[]
+  problemsCreated Problem[]
+  attempts        Attempt[]
+  Report          Report[]
+}
+
+model Class {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  // Relations
+  teacherId   String
+  teacher     User         @relation("TeacherClasses", fields: [teacherId], references: [id])
+  enrollments Enrollment[]
+  assignments Assignment[]
+}
+
+model Enrollment {
+  id       String   @id @default(cuid())
+  joinedAt DateTime @default(now())
+
+  // Relations
+  classId   String
+  studentId String
+  class     Class  @relation(fields: [classId], references: [id])
+  student   User   @relation(fields: [studentId], references: [id])
+}
+
+model Assignment {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  classId  String
+  class    Class             @relation(fields: [classId], references: [id])
+  problems ProblemInstance[]
+  reports  Report[]
+}
+
+model Problem {
+  id           String   @id @default(cuid())
+  templateCode String
+  topic        String
+  difficulty   String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  creatorId String
+  creator   User              @relation(fields: [creatorId], references: [id])
+  instances ProblemInstance[]
+}
+
+model ProblemInstance {
+  id        String   @id @default(cuid())
+  params    Json?
+  latex     String?
+  answer    Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  assignmentId String
+  problemId    String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  problem      Problem    @relation(fields: [problemId], references: [id])
+  attempts     Attempt[]
+}
+
+model Attempt {
+  id             String   @id @default(cuid())
+  response       Json?
+  autoScore      Float?
+  finalScore     Float?
+  teacherComment String?
+  submittedAt    DateTime @default(now())
+
+  // Relations
+  problemInstanceId String
+  studentId         String
+  problemInstance   ProblemInstance @relation(fields: [problemInstanceId], references: [id])
+  student           User            @relation(fields: [studentId], references: [id])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  data        Json?
+  generatedAt DateTime @default(now())
+
+  // Relations
+  assignmentId String
+  studentId    String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      User       @relation(fields: [studentId], references: [id])
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
 }

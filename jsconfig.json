@@ -7,7 +7,8 @@
             "@middlewares/*": ["src/middlewares/*"],
             "@config/*": ["src/config/*"],
             "@core/*": ["src/core/*"],
-            "@jobs/*": ["src/jobs/*"]
+            "@jobs/*": ["src/jobs/*"],
+            "@prisma/*": ["generated/prisma/*"]
         }
     },
     "include": ["src"]
