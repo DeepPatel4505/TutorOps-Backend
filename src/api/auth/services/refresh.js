@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import ApiError from 'src/entities/ApiError';
-import ApiResponse from 'src/entities/ApiResponse';
+import ApiError from '@entities/ApiError';
+import ApiResponse from '@entities/ApiResponse';
 
 const refresh = (req, res, next) => {
     try {
@@ -31,4 +31,4 @@ const refresh = (req, res, next) => {
     }
 };
 
-export default refresh;
+export {refresh};

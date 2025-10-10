@@ -8,7 +8,8 @@
             "@config/*": ["src/config/*"],
             "@core/*": ["src/core/*"],
             "@jobs/*": ["src/jobs/*"],
-            "@prisma/*": ["generated/prisma/*"]
+            "@prisma/*": ["generated/prisma/*"],
+            "@entities" : ["src/entities/*"],
         }
     },
     "include": ["src"]

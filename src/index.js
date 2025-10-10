@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import http from 'http';
+import ApiResponse from '@entities/ApiResponse';
 // import { test, dbTestRoute } from '@utils/test';
 
 dotenv.config();
@@ -11,7 +12,10 @@ const server = http.createServer(app);
 
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin : 'http://localhost:5173',
+    credentials : true
+}));
 app.use(express.json());
 
 //Testing routes
@@ -22,6 +26,12 @@ app.use(express.json());
 // console.log('Environment Variables:', process.env.TEST);
 
 app.use(express.urlencoded({ extended: true }));
+
+app.get("/api/test",(req,res)=>{
+    res.json(new ApiResponse({
+        data : "Handshake done!!!!"
+    }))
+})
 
 
 
