@@ -21,5 +21,4 @@ router.post("/google-callback", googleCallback );
 router.post("/logout", isAuthenticated, logout);
 
 
-
 export { router };

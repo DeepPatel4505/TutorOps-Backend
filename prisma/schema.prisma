@@ -23,6 +23,7 @@ model User {
   googleId String?  @unique
   role      Role
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   classesTaught   Class[]      @relation("TeacherClasses")
@@ -30,18 +31,28 @@ model User {
   problemsCreated Problem[]
   attempts        Attempt[]
   Report          Report[]
+  tokens          Token[]
+
+  //Indexes
+  @@index([email])
+  @@index([username])
+
 }
 
 model Class {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   teacherId   String
   teacher     User         @relation("TeacherClasses", fields: [teacherId], references: [id])
   enrollments Enrollment[]
   assignments Assignment[]
+
+  //Indexes
+  @@index([teacherId])
 }
 
 model Enrollment {
@@ -61,6 +72,7 @@ model Assignment {
   description String?
   dueDate     DateTime?
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
   classId  String
@@ -75,6 +87,7 @@ model Problem {
   topic        String
   difficulty   String
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
   creatorId String
@@ -88,6 +101,7 @@ model ProblemInstance {
   latex     String?
   answer    Json?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   assignmentId String
@@ -116,6 +130,7 @@ model Report {
   id          String   @id @default(cuid())
   data        Json?
   generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   assignmentId String
@@ -124,8 +139,37 @@ model Report {
   student      User       @relation(fields: [studentId], references: [id])
 }
 
+//Resfersh Token
+model Token {
+  id        String   @id @default(cuid())
+  type      TokenType
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+  revoked  Boolean  @default(false)
+  ipAddress String?
+  userAgent String?
+  deviceName String?
+  deviceType String?
+
+
+  //Indexes
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([tokenHash, type])
+}
+
 enum Role {
   STUDENT
   TEACHER
   ADMIN
+}
+
+enum TokenType {
+  REFRESH
+  RESET_PASSWORD
+  EMAIL_VERIFICATION
 }
