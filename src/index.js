@@ -1,41 +1,58 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import http from 'http';
-import ApiResponse from '@entities/ApiResponse';
-// import { test, dbTestRoute } from '@utils/test';
+import http from "http";
+import app from "./app.js";
+import { PORT, NODE_ENV } from "#config/env.js";
+import logger from "#utils/logger.js";
 
-dotenv.config();
-
-const app = express();
-const server = http.createServer(app);
-
-const PORT = process.env.PORT || 3000;
-
-app.use(cors({
-    origin : 'http://localhost:5173',
-    credentials : true
-}));
-app.use(express.json());
-
-//Testing routes
-// test();
-// dbTestRoute(app);
-
-// console.log('Test function executed successfully');
-// console.log('Environment Variables:', process.env.TEST);
-
-app.use(express.urlencoded({ extended: true }));
-
-app.get("/api/test",(req,res)=>{
-    res.json(new ApiResponse({
-        data : "Handshake done!!!!"
-    }))
-})
-
-
-
-server.listen(PORT, async () => {
-    app.use('/api', (await import('@src/core/router')).default);
-    console.log(`Server is running on port ${PORT}`);
+process.on("unhandledRejection", (reason) => {
+    logger.base.error({ reason }, "Unhandled Promise Rejection");
 });
+
+process.on("uncaughtException", (err) => {
+    logger.base.fatal({ err }, "UNCAUGHT EXCEPTION - Server crashed");
+    process.exit(1); // mandatory for uncaught exceptions
+});
+
+process.on("RedisNotConnected", (err) => {
+    err.showStack = false;
+    logger.base.error({ err }, "Server Stopped - Redis Not Connected");
+    // logger.express.errorLogger(err, {}, {}, () => {}, false);
+    process.exit(1); // mandatory for uncaught exceptions
+});
+
+// Start server inside a protective wrapper
+function startServer() {
+    try {
+        const server = http.createServer(app);
+
+        server.listen(PORT, () => {
+            logger.base.info(`Server running on port ${PORT} in ${NODE_ENV} mode`);
+        });
+
+        // Graceful Shutdown Handling
+        process.on("SIGINT", () => shutdown(server, "SIGINT"));
+        process.on("SIGTERM", () => shutdown(server, "SIGTERM"));
+
+        return server;
+
+    } catch (err) {
+        logger.base.error({ err }, "❌ FATAL STARTUP ERROR — Server crashed before boot");
+        process.exit(1);
+    }
+}
+
+function shutdown(server, signal) {
+    logger.base.warn(`⚠️ Received ${signal}. Shutting down gracefully...`);
+
+    server.close(() => {
+        logger.base.info("🛑 HTTP server closed");
+        process.exit(0);
+    });
+
+    // Force quit if shutdown hangs
+    setTimeout(() => {
+        logger.base.error("❗ Forcing shutdown");
+        process.exit(1);
+    }, 5000);
+}
+
+startServer();

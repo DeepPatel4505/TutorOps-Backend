@@ -10,3 +10,7 @@ node_modules
 /generated/prisma
 
 /.vscode
+
+/generated/prisma
+
+/src/generated/prisma

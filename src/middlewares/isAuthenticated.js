@@ -1,25 +1,17 @@
-import ApiError from '@entities/ApiError';
-import jwt from 'jsonwebtoken';
+import ApiError from '#entities/ApiError.js';
+import prisma from '#src/utils/prisma.js';
+import ApiResponse from '#entities/ApiResponse.js';
 
-const isAuthenticated = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    const refresh_token = req.cookies.refresh_token;
-    if (!refresh_token) {
-        return next(new ApiError(401, 'Refresh token missing'));
+const isAuthenticated = async (req, res, next) => {
+    try {
+        const session = req.session;
+        if (!session || !session.user || !session.user.id) {
+            return next(new ApiError(401, 'Unauthorized : Not logged in'));
+        }
+        next();
+    } catch (err) {
+        next(new ApiError(500, 'Internal server error', err));
     }
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return next(new ApiError(401, 'Access token missing'));
-    }
-    const access_token = authHeader.split(' ')[1];
-    if (!access_token) {
-        return next(ApiError.unauthorized('Invalid token'));
-    }
-    console.log(access_token);
-    
-    const decodedUser = jwt.verify(access_token, process.env.JWT_ACCESS_SECRET);
-    console.log(decodedUser);
-    
-    req.user = decodedUser;
-    next();
 };
+
 export default isAuthenticated;

@@ -1,14 +1,42 @@
 import pino from 'pino';
+import { normalizePath } from '#utils/normalizePath.js';
 
 // --- Base Logger Configuration ---
 const isProd = process.env.NODE_ENV === 'production';
 
 const baselogger = pino({
     level: process.env.LOG_LEVEL || (isProd ? 'info' : 'debug'),
-    base: { app: 'LMS', env: process.env.NODE_ENV },
     redact: ['req.headers.authorization', 'password'],
     timestamp: pino.stdTimeFunctions.isoTime,
-    transport: !isProd ? { target: 'pino-pretty', options: { colorize: true } } : { target: 'pino/file', options: { destination: './logs/app.log' } },
+
+    serializers: {
+        err: (error) => {
+            // If stack is not required, return only message
+            if (!error || error.showStack === false) {
+                return error?.message;
+            }
+
+            // If stack is required, include it
+            return {
+                message: error.message,
+                stack: error.stack,
+            };
+        },
+    },
+
+    transport: !isProd
+        ? {
+            target: 'pino-pretty',
+            options: {
+                colorize: true,
+                translateTime: 'yyyy-mm-dd HH:MM:ss.l',
+                ignore: 'headers,query,params,body,pid,hostname',
+                singleLine: true,
+            },
+        } : {
+            target: 'pino/file',
+            options: { destination: './logs/app.log' },
+        },
 });
 
 // --- Child Loggers for Core Modules ---
@@ -52,17 +80,33 @@ const responseLogger = (req, res, next) => {
     next();
 };
 
-const errorLogger = (err, req, res, next) => {
+const errorLogger = (err, req, res, next, stackenabled = true) => {
+    let cleanStack = '';
+
+    if (err.stack && stackenabled) {
+        cleanStack = err.stack
+            .split('\n')
+            .filter(
+                (line) =>
+                    line.includes('src/') &&
+                    !line.includes('node_modules') &&
+                    !line.includes('(internal') &&
+                    !line.includes('bootstrap_node')
+            )
+            .map((line) => normalizePath(line))
+            .join('\n');
+    }
+
     baselogger.error(
         {
             message: err.message,
-            stack: err.stack,
+            stack: cleanStack,
             url: req.url,
             method: req.method,
-            headers: req.headers,
         },
         'Error occurred'
     );
+
     next(err);
 };
 

@@ -1,4 +1,3 @@
-import { ROLE } from '@utils/constant';
 import { z } from 'zod';
 
 const registerDto = z.object({

@@ -2,15 +2,45 @@
     "compilerOptions": {
         "baseUrl": "./",
         "paths": {
-            "@api/*": ["src/api/*"],
-            "@utils/*": ["src/utils/*"],
-            "@middlewares/*": ["src/middlewares/*"],
-            "@config/*": ["src/config/*"],
-            "@core/*": ["src/core/*"],
-            "@jobs/*": ["src/jobs/*"],
-            "@prisma/*": ["generated/prisma/*"],
-            "@entities" : ["src/entities/*"],
+            "#src/*": [
+                "src/*"
+            ],
+            "#utils/*": [
+                "src/utils/*"
+            ],
+            "#controllers/*": [
+                "src/controllers/*"
+            ],
+            "#middlewares/*": [
+                "src/middlewares/*"
+            ],
+            "#services/*": [
+                "src/services/*"
+            ],
+            "#models/*": [
+                "src/models/*"
+            ],
+            "#config/*": [
+                "src/config/*"
+            ],
+            "#types/*": [
+                "src/types/*"
+            ],
+            "#routes/*": [
+                "src/routes/*"
+            ],
+            "#validators/*": [
+                "src/validators/*"
+            ],
+            "#api/*": [
+                "src/api/*"
+            ],
+            "#entities/*": [
+                "src/entities/*"
+            ]
         }
     },
-    "include": ["src"]
+    "include": [
+        "src"
+    ]
 }
