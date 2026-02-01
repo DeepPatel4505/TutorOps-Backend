@@ -5,6 +5,10 @@ import { NODE_ENV } from '#config/env.js';
 
 export default function errorHandler(err, req, res, next) {
     let error = err;
+    // If CSRF error, customize message
+    if (err.code === 'EBADCSRFTOKEN') {
+        error = ApiError.forbidden('Invalid CSRF token', err, req.path);
+    }
 
     // Convert non-ApiError into ApiError
     if (!(err instanceof ApiError)) {
@@ -47,11 +51,11 @@ export default function errorHandler(err, req, res, next) {
         logger.express.errorLogger(error, req, res, () => {});
 
         // Structured log
-        logger.helpers.logError('API Error', {
-            message: error.message,
-            path: error.path,
-            stack: cleanStack,
-        });
+        // logger.helpers.logError('API Error', {
+        //     message: error.message,
+        //     path: error.path,
+        //     stack: cleanStack,
+        // });
     }
 
     // Send clean response

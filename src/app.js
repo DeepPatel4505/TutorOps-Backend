@@ -25,13 +25,10 @@ import { store, redisClient,session as redisSession } from '#utils/redis.js';
 // Create app + server
 const app = express();
 
-// Redis Store
-console.log("SESSION:", redisSession);
-
 // Middlewaress
 app.use(
     cors({
-        origin: 'http://localhost:5173',
+        origin: [process.env.FRONTEND_URL,'http://172.20.64.1:5000'],
         credentials: true,
     })
 );
