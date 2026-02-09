@@ -23,6 +23,9 @@ router.get('/health', async (req, res) => {
 
     try {
         const redis = new Redis(REDIS_URL);
+        redis.on('error', (err) => {
+            // Suppress error logging
+        });
         await redis.ping();
         redis.disconnect();
     } catch {

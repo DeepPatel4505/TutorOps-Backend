@@ -52,3 +52,50 @@ export const findUserById = async (id) => {
         },
     });
 };
+
+export const storeOtpHash = async (userId, otphash, expiry) => {
+    console.log("Storing OTP Hash:", { userId, otphash, expiry });
+    const userdata  = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userdata) {
+        console.error("User not found for storing OTP hash:", userId);
+    }
+    console.log("User found for storing OTP hash:", userdata);
+    const newdata = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            codehash: otphash,
+            expiry,
+        },
+    });
+    console.log("OTP Hash Stored:", newdata);
+    return newdata;
+};
+
+export const getOtpRecord = async (userId) => {
+    return prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            otphash: true,
+            expiry: true,
+        },
+    });
+};
+export const markEmailAsVerified = async (userId) => {
+    return prisma.user.update({
+        where: { id: userId },
+        data: {
+            isVerified: true,
+            otphash: null,
+            expiry: null,
+        },
+    });
+}
+export const deleteOtpRecord = async (userId) => {
+    return prisma.user.update({
+        where: { id: userId },
+        data: {
+            otphash: null,
+            expiry: null,
+        },
+    });
+}

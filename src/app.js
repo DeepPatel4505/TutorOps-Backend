@@ -6,12 +6,16 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import csurf from 'csurf';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { ExpressAdapter } from '@bull-board/express';
 // import session from 'express-session';
 
 // Custom Modules
 import ApiResponse from '#entities/ApiResponse.js';
 import errorHandler from '#src/middlewares/errorHandler.js';
 import appRouter from '#core/router.js';
+import { emailQueue } from '#src/queues/email.queue.js';
 
 // Configs
 import { SESSION_SECRET, NODE_ENV } from '#config/env.js';
@@ -20,7 +24,7 @@ import { dbTestRoute } from './utils/test';
 import { testsetRedis } from '#utils/test';
 
 // Redis Session
-import { store, redisClient,session as redisSession } from '#utils/redis.js';
+import { store, redisClient, session as redisSession } from '#utils/redis.js';
 
 // Create app + server
 const app = express();
@@ -28,7 +32,7 @@ const app = express();
 // Middlewaress
 app.use(
     cors({
-        origin: [process.env.FRONTEND_URL,'http://172.20.64.1:5000'],
+        origin: [process.env.FRONTEND_URL, 'http://172.20.64.1:5000'],
         credentials: true,
     })
 );
@@ -68,6 +72,20 @@ dbTestRoute(app);
 
 // CSRF protection (after sessions)
 app.use(csurf());
+
+// ---- Bull Board (DEV ONLY) ----
+if (NODE_ENV === 'development') {
+    const serverAdapter = new ExpressAdapter();
+    serverAdapter.setBasePath('/admin/queues');
+
+    createBullBoard({
+        queues: [new BullMQAdapter(emailQueue)],
+        serverAdapter,
+    });
+
+    app.use('/admin/queues', serverAdapter.getRouter());
+}
+// --------------------------------
 
 // Expose CSRF token route
 app.get('/api/auth/csrf-token', (req, res) => {

@@ -10,4 +10,13 @@ export const {
     AI_API_KEY,
     SESSION_SECRET,
     REDIS_URL,
+    EMAIL_PROVIDER,
+    GMAIL_USER,
+    GMAIL_PASS,
+
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_SECURE,
+    SMTP_USER,
+    SMTP_PASS,
 } = process.env;

@@ -8,6 +8,7 @@ export const loginController = async (req, res, next) => {
         const { email, password } = req.body;
         // Run service
         const userPayload = await loginService({ email, password });
+        delete userPayload.password; // Ensure password is not sent to client
         // Prevent session fixation attack
         req.session.regenerate(async (err) => {
             if (err) return next(new ApiError(500, 'Session regeneration failed', err));

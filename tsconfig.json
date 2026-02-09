@@ -40,6 +40,14 @@
             ]
         }
     },
+    "typeAcquisition": {
+        "enable": false
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "build"
+    ],
     "include": [
         "src"
     ]

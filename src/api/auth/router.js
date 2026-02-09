@@ -8,12 +8,16 @@ import { logoutController,logoutAllDevicesController } from "./controllers/logou
 import { getMeController } from "./controllers/getme.controller.js";
 import { googleCallbackController } from "./controllers/googleCallback.controller.js";
 import isAuthenticated from "#src/middlewares/isAuthenticated.js";
+import { sendOtpController,verifyOtpController } from "./controllers/otp.controller.js";
 
-router.post("/register", registerController);
-router.post("/login", loginController);
-router.post("/logout", logoutController);
-router.post("/logoutAllDevices", isAuthenticated, logoutAllDevicesController);
-router.post("/googleCallback", googleCallbackController )
-router.get("/me",isAuthenticated, getMeController);
+router.post("/register", registerController); // User Registration and Email Verification
+router.post("/sendOtp", sendOtpController); // Resend OTP for Email Verification
+router.post("/verifyOtp", verifyOtpController); // Verify OTP for Email Verification
+
+router.post("/login", loginController); // User Login
+router.post("/logout", logoutController); // User Logout
+router.post("/logoutAllDevices", isAuthenticated, logoutAllDevicesController); // Logout from All Devices
+router.post("/googleCallback", googleCallbackController ) // Google OAuth Callback
+router.get("/me",isAuthenticated, getMeController); // Get Authenticated User Info
 
 export { router };

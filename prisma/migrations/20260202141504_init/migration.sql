@@ -10,6 +10,7 @@ CREATE TABLE "User" (
     "password" TEXT,
     "googleId" TEXT,
     "role" "Role" NOT NULL,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

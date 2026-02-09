@@ -4,7 +4,14 @@ import Redis from 'ioredis';
 import { REDIS_URL } from '#config/env.js';
 import logger from '#utils/logger.js';
 
+let sharedRedisClient = null;
+
 function configureRedis() {
+    if (sharedRedisClient) {
+        return sharedRedisClient;
+    }
+
+
     const redisClient = new Redis(REDIS_URL);
 
     const RedisStore = connectRedis(expressSession);
@@ -16,8 +23,8 @@ function configureRedis() {
 
     let MaxAttempts = 5;
     redisClient.on('error', (err) => {
-        err = {}
-        logger.base.error({ err }, ' Redis connection error');
+        logger.base.error({}, ' Redis connection error');
+        // Error is consumed to prevent default stack trace logging
     });
 
     redisClient.on('connect', () => {
@@ -32,7 +39,8 @@ function configureRedis() {
         }
     });
 
-    return { store, redisClient, session: expressSession };
+    sharedRedisClient = { store, redisClient, session: expressSession };
+    return sharedRedisClient;
 }
 
 export const { store, redisClient, session } = configureRedis();

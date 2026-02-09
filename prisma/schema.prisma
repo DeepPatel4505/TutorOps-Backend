@@ -1,7 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  engineType = "client"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  engineType   = "client"
   moduleFormat = "esm"
 }
 
@@ -9,17 +9,19 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  username  String?  @unique
-  email     String   @unique
-  password  String?
-  googleId String?  @unique
-  role      Role
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(cuid())
+  name       String
+  username   String?   @unique
+  email      String    @unique
+  password   String?
+  googleId   String?   @unique
+  role       Role
+  isVerified Boolean   @default(false)
+  codehash   String?
+  expiry     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   // Relations
   classesTaught   Class[]      @relation("TeacherClasses")
@@ -31,7 +33,6 @@ model User {
   //Indexes
   @@index([email])
   @@index([username])
-
 }
 
 model Class {
@@ -134,10 +135,8 @@ model Report {
   student      User       @relation(fields: [studentId], references: [id])
 }
 
-
 enum Role {
   STUDENT
   TEACHER
   ADMIN
 }
-
