@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { findUserByEmail, storeOtpHash,getOtpRecord, markEmailAsVerified, deleteOtpRecord  } from '../daos/user.dao';
+import { findUserByEmail, storeOtpHash,getOtpRecord, markEmailAsVerified, deleteOtpRecord  } from '../daos/user.dao.js';
 import { enqueueVerificationEmail } from '#src/services/email/email.producer.js';
 import ApiResponse from '#entities/ApiResponse.js';
 import ApiError from '#entities/ApiError.js';

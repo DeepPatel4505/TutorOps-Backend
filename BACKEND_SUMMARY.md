@@ -2,8 +2,8 @@
 
 **Project:** TutorOps AI Tutoring Platform  
 **Version:** 1.0.0  
-**Last Updated:** February 5, 2026  
-**Tech Stack:** Node.js 18+, Express 5, PostgreSQL, Redis, Prisma ORM, BullMQ
+**Last Updated:** February 9, 2026  
+**Tech Stack:** Node.js 18+, Express 5, PostgreSQL, Redis, Prisma ORM, BullMQ, Bull Board
 
 ---
 
@@ -13,12 +13,13 @@
 2. [Complete Authentication Flow](#authentication-flow)
 3. [Email Verification System](#email-verification)
 4. [Background Job Processing](#background-jobs)
-5. [API Endpoints](#api-endpoints)
-6. [Database Schema](#database-schema)
-7. [Security Features](#security-features)
-8. [Logging & Monitoring](#logging)
-9. [Tech Stack & Dependencies](#tech-stack)
-10. [Configuration & Environment](#configuration)
+5. [Bull Board Dashboard](#bull-board-dashboard)
+6. [API Endpoints](#api-endpoints)
+7. [Database Schema](#database-schema)
+8. [Security Features](#security-features)
+9. [Logging & Monitoring](#logging)
+10. [Tech Stack & Dependencies](#tech-stack)
+11. [Configuration & Environment](#configuration)
 
 ---
 
@@ -480,6 +481,102 @@ export const createBullmqConnection = () => {
 - **SEND_REMINDER_EMAIL** - Assignment deadline reminders
 - **BATCH_EXPORT_DATA** - Export large datasets
 - **CLEANUP_OLD_SESSIONS** - Periodic session cleanup
+
+---
+
+## 📊 Bull Board Dashboard (Job Queue Monitoring)
+
+### **Overview**
+
+The project includes **Bull Board**, a powerful UI for monitoring and managing BullMQ jobs in real-time. This allows developers to visualize job queues, track job status, and manage jobs without writing SQL queries.
+
+### **Features**
+
+- ✅ Real-time job queue visualization
+- ✅ Job status tracking (waiting, active, completed, failed)
+- ✅ View job details and payloads
+- ✅ Manually retry failed jobs
+- ✅ Remove or promote jobs
+- ✅ Monitor queue metrics
+- ✅ Development-only access (protected in production)
+
+### **Access URL**
+
+```
+http://localhost:3000/admin/queues
+```
+
+Only available when `NODE_ENV=development`
+
+### **Configuration (app.js)**
+
+```javascript
+// ---- Bull Board (DEV ONLY) ----
+if (NODE_ENV === 'development') {
+    const serverAdapter = new ExpressAdapter();
+    serverAdapter.setBasePath('/admin/queues');
+
+    createBullBoard({
+        queues: [new BullMQAdapter(emailQueue)],
+        serverAdapter,
+    });
+
+    app.use('/admin/queues', serverAdapter.getRouter());
+}
+// --------------------------------
+```
+
+### **Supported Queues**
+
+| Queue Name | Status | Purpose |
+|-----------|--------|---------|
+| **Email Queue** | ✅ Monitoring | Email sending jobs |
+
+### **Monitored Metrics**
+
+```
+┌─────────────────────────────────────────────────┐
+│              BULL BOARD DASHBOARD                │
+├─────────────────────────────────────────────────┤
+│  Queue: tutorops:email                          │
+│  ├─ Waiting: 5 jobs                             │
+│  ├─ Active: 2 jobs                              │
+│  ├─ Completed: 487 jobs                         │
+│  ├─ Failed: 3 jobs                              │
+│  └─ Delayed: 0 jobs                             │
+│                                                 │
+│  Actions:                                       │
+│  • View job details & payload                   │
+│  • Retry failed jobs                            │
+│  • Promote delayed jobs                         │
+│  • Remove jobs                                  │
+│  • Monitor job duration & attempts              │
+└─────────────────────────────────────────────────┘
+```
+
+### **Usage Example**
+
+1. Start the server in development mode:
+   ```bash
+   npm run dev
+   ```
+
+2. Open your browser:
+   ```
+   http://localhost:3000/admin/queues
+   ```
+
+3. Navigate to the email queue to:
+   - View pending verification emails
+   - Monitor job execution
+   - Manually retry failed emails
+   - View error details
+
+### **Security Notes**
+
+- ⚠️ **Development Only:** Bull Board is disabled in production
+- ⚠️ **No Authentication:** Add authentication middleware in production if you need this feature
+- ✅ **Protected URL:** Cannot be accessed in production (entire route disabled)
 
 ---
 
@@ -1015,6 +1112,12 @@ user_sessions:cm4abc123xyz → ["sess:abc123..."]
 | ------ | -------------------- | --------- | ------------------------ |
 | GET    | `/api/system/health` | ❌        | Health check (DB, Redis) |
 | GET    | `/test`              | ❌        | Basic handshake test     |
+
+### **Admin Endpoints (Development Only)**
+
+| Method | Endpoint             | Protected | Description                 |
+| ------ | -------------------- | --------- | -------------------------------- |
+| GET    | `/admin/queues`      | ❌        | Bull Board dashboard (dev only) |
 
 ### **Detailed Endpoint Specifications**
 
@@ -1775,6 +1878,8 @@ ApiError.internal(500)         // Server errors
 #### **Production Dependencies**
 ```json
 {
+  "@bull-board/api": "^6.16.4",        // Bull Board dashboard API
+  "@bull-board/express": "^6.16.4",    // Bull Board Express integration
   "@prisma/adapter-pg": "^7.0.1",      // PostgreSQL adapter
   "@prisma/client": "^7.0.1",          // Prisma ORM client
   "axios": "^1.12.2",                  // HTTP client
@@ -1811,13 +1916,14 @@ ApiError.internal(500)         // Server errors
 
 ```json
 {
-  "dev": "nodemon --exec tsx src/index.js",     // Development mode
+  "dev": "nodemon --exec tsx src/index.js",     // Development mode with auto-restart
   "start": "tsx src/index.js",                  // Production start
   "build": "node src/index.js",                 // Build/run
   "format": "prettier --write .",               // Format all files
   "format:check": "prettier --check .",         // Check formatting
-  "migrate": "npx prisma migrate dev && npx prisma generate",  // DB migration
-  "studio": "npx prisma studio"                 // Open Prisma Studio
+  "migrate": "npx prisma migrate dev && npx prisma generate",  // DB migration & Prisma regenerate
+  "studio": "npx prisma studio",                // Open Prisma Studio GUI
+  "worker:email": "tsx src/workers/email.worker.js"  // Run email worker separately
 }
 ```
 
@@ -1864,12 +1970,17 @@ ApiError.internal(500)         // Server errors
 - **ioredis** - High-performance Redis client
 - **connect-redis** - Express session store for Redis
 
-#### **Background Jobs**
+#### **Background Jobs & Monitoring**
 - **bullmq** - Redis-based job queue
   - Supports retries with backoff
   - Job prioritization
   - Concurrency control
   - Event-driven architecture
+- **@bull-board/api** - Bull Board API for job monitoring
+- **@bull-board/express** - Express integration for Bull Board dashboard
+  - Real-time job visualization
+  - Automated retry management
+  - Development-only access
 
 #### **Communication**
 - **axios** - HTTP client for external APIs
@@ -2050,10 +2161,26 @@ app.use(redisSession({
 // 6. CSRF Protection (AFTER sessions)
 app.use(csurf());
 
-// 7. Routes
+// 7. Bull Board Dashboard (Development Only)
+if (NODE_ENV === 'development') {
+  const serverAdapter = new ExpressAdapter();
+  serverAdapter.setBasePath('/admin/queues');
+  createBullBoard({
+    queues: [new BullMQAdapter(emailQueue)],
+    serverAdapter,
+  });
+  app.use('/admin/queues', serverAdapter.getRouter());
+}
+
+// 8. CSRF Token Route
+app.get('/api/auth/csrf-token', (req, res) => {
+  res.status(200).json({ csrfToken: req.csrfToken() });
+});
+
+// 9. Routes
 app.use('/api', appRouter);
 
-// 8. Error Handler (LAST)
+// 10. Error Handler (LAST)
 app.use(errorHandler);
 ```
 
@@ -2637,6 +2764,13 @@ tutorops:email:verify-email:cm4abc123xyz → Hash {
 - ✅ Background job processing
 - ✅ Email queue management
 
+#### **8. Job Queue Monitoring**
+- ✅ Bull Board dashboard (development)
+- ✅ Real-time job visualization
+- ✅ Job status tracking
+- ✅ Manual retry management
+- ✅ Queue metrics display
+
 ### **🔜 Planned Features** (based on schema)
 
 #### **Educational Platform**
@@ -2667,14 +2801,15 @@ tutorops:email:verify-email:cm4abc123xyz → Hash {
 
 | Metric | Count |
 |--------|-------|
-| **Total Dependencies** | 15 production + 5 dev |
-| **API Endpoints** | 9 authentication + 2 system |
+| **Total Dependencies** | 17 production + 5 dev |
+| **API Endpoints** | 9 authentication + 2 system + 1 admin (Bull Board) |
 | **Database Models** | 8 models (User, Class, Assignment, etc.) |
-| **Middleware** | 3 custom + 8 third-party |
+| **Middleware** | 3 custom + 9 third-party |
 | **Background Workers** | 1 (email worker) |
 | **Job Types** | 1 implemented + 5 planned |
 | **Redis Data Structures** | 3 types (sessions, tracking, jobs) |
 | **Lines of Code** | ~2500+ lines (backend only) |
+| **Documentation Pages** | 1 comprehensive README |
 
 ### **🛡️ Security Checklist**
 
@@ -2760,13 +2895,14 @@ tutorops:email:verify-email:cm4abc123xyz → Hash {
 
 ## 🎓 Conclusion
 
-The **TutorOps Backend** is a production-ready, secure, and scalable authentication system with email verification and background job processing. Built with modern best practices and enterprise-grade libraries, it provides a solid foundation for an AI-powered educational platform.
+The **TutorOps Backend** is a production-ready, secure, and scalable authentication system with email verification, background job processing, and comprehensive job queue monitoring. Built with modern best practices and enterprise-grade libraries, it provides a solid foundation for an AI-powered educational platform.
 
 **Key Strengths:**
 - ✅ Comprehensive security measures
 - ✅ Clean architecture with clear separation of concerns
 - ✅ Robust error handling and logging
 - ✅ Background job processing for async tasks
+- ✅ Job queue monitoring dashboard (Bull Board)
 - ✅ Scalable session management
 - ✅ Type-safe database operations
 - ✅ Well-documented codebase
@@ -2777,11 +2913,12 @@ The **TutorOps Backend** is a production-ready, secure, and scalable authenticat
 - Real-time features (Socket.IO)
 - Horizontal scaling
 - Production deployment
+- Job queue monitoring and management
 
 The foundation is solid. Let's build something amazing! 🚀
 
 ---
 
-**Document Version:** 2.0  
-**Last Updated:** February 5, 2026  
+**Document Version:** 2.1  
+**Last Updated:** February 9, 2026  
 **Maintained By:** TutorOps Development Team
