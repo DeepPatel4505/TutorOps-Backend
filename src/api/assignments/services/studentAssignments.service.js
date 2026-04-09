@@ -30,6 +30,17 @@ const resolvePoints = (problemInstance) => {
     return Number.isFinite(points) && points >= 0 ? points : 1;
 };
 
+const toPercentage = (score, maxScore) => {
+    const normalizedScore = Number(score);
+    const normalizedMaxScore = Number(maxScore);
+
+    if (!Number.isFinite(normalizedScore) || !Number.isFinite(normalizedMaxScore) || normalizedMaxScore <= 0) {
+        return null;
+    }
+
+    return Number(((normalizedScore / normalizedMaxScore) * 100).toFixed(2));
+};
+
 const gradeObjectiveAnswer = ({ expectedAnswer, responseAnswer, points }) => {
     if (expectedAnswer === null || expectedAnswer === undefined) {
         return null;
@@ -223,6 +234,9 @@ export const getStudentAssignmentResult = async ({ assignmentId, studentId }) =>
 
     const report = await findReportByAssignmentAndStudent({ assignmentId, studentId });
     const attempts = await getStudentAttemptsForAssignment({ assignmentId, studentId });
+    const securedMarks = Number(report?.data?.finalScore ?? report?.data?.autoScore ?? 0);
+    const totalMarks = Number(report?.data?.maxScore ?? 0);
+    const score = toPercentage(securedMarks, totalMarks);
 
     const status = report?.data?.status === 'graded' ? 'graded' : 'pending';
 
@@ -230,8 +244,9 @@ export const getStudentAssignmentResult = async ({ assignmentId, studentId }) =>
         assignmentId: assignment.id,
         title: assignment.title,
         status,
-        score: report?.data?.finalScore ?? report?.data?.autoScore ?? null,
-        maxScore: report?.data?.maxScore ?? null,
+        score,
+        securedMarks,
+        totalMarks,
         feedback: report?.data?.feedback || null,
         submittedAt: report?.data?.submittedAt || null,
         gradedAt: report?.data?.gradedAt || null,
@@ -251,7 +266,8 @@ export const getStudentReports = async ({ studentId }) => {
     const reports = await getStudentReportsRaw({ studentId });
 
     const rows = reports.map((report) => {
-        const finalScore = Number(report?.data?.finalScore ?? report?.data?.autoScore ?? 0);
+        const securedMarks = Number(report?.data?.finalScore ?? report?.data?.autoScore ?? 0);
+        const totalMarks = Number(report?.data?.maxScore ?? 0);
 
         return {
             reportId: report.id,
@@ -261,16 +277,21 @@ export const getStudentReports = async ({ studentId }) => {
             dueDate: report.assignment.dueDate,
             generatedAt: report.generatedAt,
             status: report?.data?.status || 'submitted',
-            finalScore,
-            maxScore: Number(report?.data?.maxScore ?? 0),
+            score: toPercentage(securedMarks, totalMarks),
+            securedMarks,
+            totalMarks,
             updatedAt: report.updatedAt,
         };
     });
 
     const graded = rows.filter((row) => row.status === 'graded');
-    const averageScore =
+    const averageSecuredMarks =
         graded.length > 0
-            ? Number((graded.reduce((sum, item) => sum + item.finalScore, 0) / graded.length).toFixed(2))
+            ? Number((graded.reduce((sum, item) => sum + item.securedMarks, 0) / graded.length).toFixed(2))
+            : 0;
+    const averageTotalMarks =
+        graded.length > 0
+            ? Number((graded.reduce((sum, item) => sum + item.totalMarks, 0) / graded.length).toFixed(2))
             : 0;
 
     return {
@@ -278,7 +299,9 @@ export const getStudentReports = async ({ studentId }) => {
         summary: {
             totalReports: rows.length,
             gradedReports: graded.length,
-            averageScore,
+            averageSecuredMarks,
+            averageTotalMarks,
+            averageScore: toPercentage(averageSecuredMarks, averageTotalMarks),
         },
     };
 };
