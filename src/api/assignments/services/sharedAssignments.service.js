@@ -1,5 +1,5 @@
 import ApiError from '#entities/ApiError.js';
-import { createProblem, getProblemById } from '../daos/assignment.dao.js';
+import { createProblem, getProblemById, getProblemTemplatesByCreator } from '../daos/assignment.dao.js';
 
 export const createReusableProblem = async ({ userId, payload }) => {
     const created = await createProblem({
@@ -20,6 +20,15 @@ export const getReusableProblemDetails = async ({ problemId }) => {
     }
 
     return problem;
+};
+
+export const listReusableProblemTemplates = async ({ userId }) => {
+    const templates = await getProblemTemplatesByCreator({ creatorId: userId });
+
+    return {
+        templates,
+        total: templates.length,
+    };
 };
 
 export const generateAiProblems = async ({ topic, difficulty, count }) => {

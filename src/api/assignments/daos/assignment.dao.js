@@ -193,32 +193,113 @@ export const getStudentAttemptsForAssignment = async ({ assignmentId, studentId 
     });
 };
 
-export const createAssignmentWithProblems = async ({ classId, title, description, dueDate, problems }) => {
-    return prisma.$transaction(async (tx) => {
-        const assignment = await tx.assignment.create({
-            data: {
-                classId,
-                title,
-                description,
-                dueDate,
+export const createAssignmentWithProblems = async ({ classId, title, description, dueDate }) => {
+    return prisma.assignment.create({
+        data: {
+            classId,
+            title,
+            description,
+            dueDate,
+        },
+    });
+};
+
+export const getAssignmentMutationStats = async ({ assignmentId }) => {
+    const [reportCount, attemptCount] = await Promise.all([
+        prisma.report.count({
+            where: { assignmentId },
+        }),
+        prisma.attempt.count({
+            where: {
+                problemInstance: {
+                    assignmentId,
+                },
             },
+        }),
+    ]);
+
+    return { reportCount, attemptCount };
+};
+
+export const updateAssignmentDetails = async ({ assignmentId, title, description, dueDate }) => {
+    const data = {
+        ...(typeof title === 'string' ? { title } : {}),
+        ...(description === undefined ? {} : { description }),
+        ...(dueDate === undefined ? {} : { dueDate }),
+    };
+
+    if (Object.keys(data).length === 0) {
+        return prisma.assignment.findUnique({
+            where: { id: assignmentId },
+        });
+    }
+
+    return prisma.assignment.update({
+        where: { id: assignmentId },
+        data,
+    });
+};
+
+export const replaceAssignmentProblemInstances = async ({ assignmentId, problemTemplates }) => {
+    return prisma.$transaction(async (tx) => {
+        await tx.problemInstance.deleteMany({
+            where: { assignmentId },
         });
 
+        const created = await Promise.all(
+            problemTemplates.map((entry) =>
+                tx.problemInstance.create({
+                    data: {
+                        assignmentId,
+                        problemId: entry.problemId,
+                        params: entry.params ?? null,
+                        latex: entry.latex ?? null,
+                        answer: entry.answer ?? null,
+                    },
+                    include: {
+                        problem: {
+                            select: {
+                                id: true,
+                                topic: true,
+                                difficulty: true,
+                                templateCode: true,
+                            },
+                        },
+                    },
+                })
+            )
+        );
+
+        return created;
+    });
+};
+
+export const addProblemInstancesToAssignment = async ({ assignmentId, problemTemplates }) => {
+    return prisma.$transaction(async (tx) => {
         const instances = await Promise.all(
-            problems.map((entry) => {
+            problemTemplates.map((entry) => {
                 return tx.problemInstance.create({
                     data: {
-                        assignmentId: assignment.id,
+                        assignmentId,
                         problemId: entry.problemId,
-                        params: {
-                            points: entry.points ?? 1,
+                        params: entry.params ?? null,
+                        latex: entry.latex ?? null,
+                        answer: entry.answer ?? null,
+                    },
+                    include: {
+                        problem: {
+                            select: {
+                                id: true,
+                                topic: true,
+                                difficulty: true,
+                            },
                         },
                     },
                 });
             })
         );
 
-        return { assignment, instances };
+        return instances;
     });
 };
 
@@ -272,6 +353,7 @@ export const getTutorAssignmentDetailsRaw = async ({ assignmentId, teacherId }) 
                             id: true,
                             topic: true,
                             difficulty: true,
+                            templateCode: true,
                         },
                     },
                 },
@@ -397,6 +479,33 @@ export const getProblemById = async ({ problemId }) => {
     return prisma.problem.findUnique({
         where: {
             id: problemId,
+        },
+    });
+};
+
+export const getProblemTemplatesByCreator = async ({ creatorId }) => {
+    return prisma.problem.findMany({
+        where: {
+            creatorId,
+        },
+        orderBy: {
+            createdAt: 'desc',
+        },
+    });
+};
+
+export const getProblemTemplatesByIdsAndCreator = async ({ problemIds, creatorId }) => {
+    return prisma.problem.findMany({
+        where: {
+            id: {
+                in: problemIds,
+            },
+            creatorId,
+        },
+        select: {
+            id: true,
+            topic: true,
+            difficulty: true,
         },
     });
 };

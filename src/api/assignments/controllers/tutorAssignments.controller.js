@@ -1,6 +1,7 @@
 import ApiError from '#entities/ApiError.js';
 import ApiResponse from '#entities/ApiResponse.js';
 import {
+    addProblemsToTutorAssignment,
     createTutorAssignment,
     getTeacherClassStudents,
     getTutorAssignmentAnalytics,
@@ -10,6 +11,7 @@ import {
     gradeTutorStudentSubmission,
     listTutorClassAssignments,
     triggerTutorAutoGrade,
+    updateTutorAssignment,
 } from '../services/tutorAssignments.service.js';
 
 export const createTutorAssignmentController = async (req, res, next) => {
@@ -20,6 +22,32 @@ export const createTutorAssignmentController = async (req, res, next) => {
         return res.status(201).json(new ApiResponse(result, 'Assignment created successfully'));
     } catch (err) {
         return next(err instanceof ApiError ? err : ApiError.internal('Failed to create assignment', err, req.originalUrl));
+    }
+};
+
+export const addProblemsToTutorAssignmentController = async (req, res, next) => {
+    try {
+        const teacherId = req.session.user.id;
+        const { assignmentId } = req.params;
+        const result = await addProblemsToTutorAssignment({
+            assignmentId,
+            teacherId,
+            problemTemplates: req.body.problemTemplates,
+        });
+        return res.status(201).json(new ApiResponse(result, 'Problems added to assignment successfully'));
+    } catch (err) {
+        return next(err instanceof ApiError ? err : ApiError.internal('Failed to add assignment problems', err, req.originalUrl));
+    }
+};
+
+export const updateTutorAssignmentController = async (req, res, next) => {
+    try {
+        const teacherId = req.session.user.id;
+        const { assignmentId } = req.params;
+        const result = await updateTutorAssignment({ assignmentId, teacherId, payload: req.body });
+        return res.status(200).json(new ApiResponse(result, 'Assignment updated successfully'));
+    } catch (err) {
+        return next(err instanceof ApiError ? err : ApiError.internal('Failed to update assignment', err, req.originalUrl));
     }
 };
 

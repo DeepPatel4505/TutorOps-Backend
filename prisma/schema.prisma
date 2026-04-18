@@ -60,6 +60,8 @@ model Enrollment {
   studentId String
   class     Class  @relation(fields: [classId], references: [id])
   student   User   @relation(fields: [studentId], references: [id])
+
+  @@unique([classId, studentId])
 }
 
 model Assignment {
@@ -105,6 +107,8 @@ model ProblemInstance {
   assignment   Assignment @relation(fields: [assignmentId], references: [id])
   problem      Problem    @relation(fields: [problemId], references: [id])
   attempts     Attempt[]
+
+  @@index([assignmentId])
 }
 
 model Attempt {
@@ -120,6 +124,8 @@ model Attempt {
   studentId         String
   problemInstance   ProblemInstance @relation(fields: [problemInstanceId], references: [id])
   student           User            @relation(fields: [studentId], references: [id])
+
+  @@index([studentId])
 }
 
 model Report {

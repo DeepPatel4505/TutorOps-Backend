@@ -1,10 +1,10 @@
 import ApiError from '#entities/ApiError.js';
 import {
     createClass,
-    createEnrollment,
+    createEnrollmentsBulk,
     findClassByIdAndTeacher,
-    findEnrollment,
-    findUserById,
+    findUsersByIds,
+    getEnrollmentsForClassAndStudents,
     getClassStudents,
     getTeacherClasses,
 } from '../daos/class.dao.js';
@@ -32,33 +32,39 @@ export const listTeacherClasses = async ({ teacherId }) => {
     }));
 };
 
-export const enrollStudentToClass = async ({ teacherId, classId, studentId }) => {
+export const enrollStudentToClass = async ({ teacherId, classId, studentIds }) => {
     const classRoom = await findClassByIdAndTeacher({ classId, teacherId });
     if (!classRoom) {
         throw ApiError.notFound('Class not found for teacher', {}, `/tutor/classes/${classId}/enroll`);
     }
 
-    const student = await findUserById({ userId: studentId });
-    if (!student) {
-        throw ApiError.notFound('Student not found', {}, `/tutor/classes/${classId}/enroll`);
+    const uniqueStudentIds = [...new Set(studentIds)];
+    const students = await findUsersByIds({ userIds: uniqueStudentIds });
+
+    if (students.length !== uniqueStudentIds.length) {
+        throw ApiError.badRequest('One or more studentIds are invalid', {}, `/tutor/classes/${classId}/enroll`);
     }
 
-    if (student.role !== 'STUDENT') {
+    const invalidRoleStudent = students.find((student) => student.role !== 'STUDENT');
+    if (invalidRoleStudent) {
         throw ApiError.badRequest('Only STUDENT users can be enrolled', {}, `/tutor/classes/${classId}/enroll`);
     }
 
-    const existing = await findEnrollment({ classId, studentId });
-    if (existing) {
-        throw ApiError.badRequest('Student is already enrolled in this class', {}, `/tutor/classes/${classId}/enroll`);
+    const existingEnrollments = await getEnrollmentsForClassAndStudents({ classId, studentIds: uniqueStudentIds });
+    const alreadyEnrolledIds = new Set(existingEnrollments.map((entry) => entry.studentId));
+    const newStudentIds = uniqueStudentIds.filter((id) => !alreadyEnrolledIds.has(id));
+
+    if (newStudentIds.length > 0) {
+        await createEnrollmentsBulk({ classId, studentIds: newStudentIds });
     }
 
-    const enrollment = await createEnrollment({ classId, studentId });
-
     return {
-        enrollmentId: enrollment.id,
         classId,
-        student,
-        joinedAt: enrollment.joinedAt,
+        requested: uniqueStudentIds.length,
+        enrolledCount: newStudentIds.length,
+        alreadyEnrolledCount: alreadyEnrolledIds.size,
+        enrolledStudentIds: newStudentIds,
+        alreadyEnrolledStudentIds: Array.from(alreadyEnrolledIds),
     };
 };
 

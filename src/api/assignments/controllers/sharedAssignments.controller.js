@@ -4,6 +4,7 @@ import {
     createReusableProblem,
     generateAiProblems,
     getReusableProblemDetails,
+    listReusableProblemTemplates,
 } from '../services/sharedAssignments.service.js';
 
 export const createProblemController = async (req, res, next) => {
@@ -23,6 +24,16 @@ export const getProblemController = async (req, res, next) => {
         return res.status(200).json(new ApiResponse(result, 'Problem fetched successfully'));
     } catch (err) {
         return next(err instanceof ApiError ? err : ApiError.internal('Failed to fetch problem', err, req.originalUrl));
+    }
+};
+
+export const listProblemTemplatesController = async (req, res, next) => {
+    try {
+        const userId = req.session.user.id;
+        const result = await listReusableProblemTemplates({ userId });
+        return res.status(200).json(new ApiResponse(result, 'Problem templates fetched successfully'));
+    } catch (err) {
+        return next(err instanceof ApiError ? err : ApiError.internal('Failed to fetch problem templates', err, req.originalUrl));
     }
 };
 

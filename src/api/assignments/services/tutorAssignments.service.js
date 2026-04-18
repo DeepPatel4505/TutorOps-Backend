@@ -1,5 +1,6 @@
 import ApiError from '#entities/ApiError.js';
 import {
+    addProblemInstancesToAssignment,
     createAssignmentWithProblems,
     createAttempt,
     createReport,
@@ -7,13 +8,17 @@ import {
     findClassByTeacher,
     findReportByAssignmentAndStudent,
     getAssignmentForTeacher,
+    getAssignmentMutationStats,
     getAssignmentReports,
     getAssignmentSubmissionsRaw,
     getAttemptsForAssignmentByProblem,
     getClassAssignmentsForTutor,
     getClassStudentsForTeacher,
+    getProblemTemplatesByIdsAndCreator,
     getTutorAssignmentDetailsRaw,
     getStudentAttemptsForAssignment,
+    replaceAssignmentProblemInstances,
+    updateAssignmentDetails,
     updateAttempt,
     updateReport,
 } from '../daos/assignment.dao.js';
@@ -40,20 +45,100 @@ export const createTutorAssignment = async ({ classId, teacherId, payload }) => 
 
     const dueDate = payload.dueDate ? new Date(payload.dueDate) : null;
 
-    const created = await createAssignmentWithProblems({
+    const assignment = await createAssignmentWithProblems({
         classId,
         title: payload.title,
         description: payload.description,
         dueDate,
-        problems: payload.problems,
     });
 
     return {
-        assignmentId: created.assignment.id,
+        assignmentId: assignment.id,
         classId,
-        title: created.assignment.title,
-        dueDate: created.assignment.dueDate,
-        totalProblems: created.instances.length,
+        title: assignment.title,
+        dueDate: assignment.dueDate,
+        totalProblems: 0,
+    };
+};
+
+export const addProblemsToTutorAssignment = async ({ assignmentId, teacherId, problemTemplates }) => {
+    const assignment = await getAssignmentForTeacher({ assignmentId, teacherId });
+
+    if (!assignment) {
+        throw ApiError.notFound('Assignment not found', {}, `/assignments/${assignmentId}/problems`);
+    }
+
+    const problemIds = [...new Set(problemTemplates.map((entry) => entry.problemId))];
+    const templates = await getProblemTemplatesByIdsAndCreator({
+        problemIds,
+        creatorId: teacherId,
+    });
+
+    if (templates.length !== problemIds.length) {
+        throw ApiError.forbidden('One or more problem templates are missing or not owned by teacher', {}, `/assignments/${assignmentId}/problems`);
+    }
+
+    const createdInstances = await addProblemInstancesToAssignment({
+        assignmentId,
+        problemTemplates,
+    });
+
+    return {
+        assignmentId,
+        createdCount: createdInstances.length,
+        problems: createdInstances,
+    };
+};
+
+export const updateTutorAssignment = async ({ assignmentId, teacherId, payload }) => {
+    const assignment = await getAssignmentForTeacher({ assignmentId, teacherId });
+
+    if (!assignment) {
+        throw ApiError.notFound('Assignment not found', {}, `/tutor/assignments/${assignmentId}`);
+    }
+
+    const mutationStats = await getAssignmentMutationStats({ assignmentId });
+    const problemTemplatesProvided = Array.isArray(payload.problemTemplates);
+    const shouldReplaceProblems = problemTemplatesProvided && payload.problemTemplates.length > 0;
+
+    if (problemTemplatesProvided && (mutationStats.reportCount > 0 || mutationStats.attemptCount > 0)) {
+        throw ApiError.badRequest('Assignment problems cannot be edited after students have submissions', {}, `/tutor/assignments/${assignmentId}`);
+    }
+
+    const dueDate = payload.dueDate === null ? null : payload.dueDate ? new Date(payload.dueDate) : undefined;
+
+    const updatedAssignment = await updateAssignmentDetails({
+        assignmentId,
+        title: payload.title,
+        description: payload.description,
+        dueDate,
+    });
+
+    let problems = assignment.problems;
+
+    if (shouldReplaceProblems) {
+        const problemIds = [...new Set(payload.problemTemplates.map((entry) => entry.problemId))];
+        const templates = await getProblemTemplatesByIdsAndCreator({
+            problemIds,
+            creatorId: teacherId,
+        });
+
+        if (templates.length !== problemIds.length) {
+            throw ApiError.forbidden('One or more problem templates are missing or not owned by teacher', {}, `/tutor/assignments/${assignmentId}`);
+        }
+
+        problems = await replaceAssignmentProblemInstances({
+            assignmentId,
+            problemTemplates: payload.problemTemplates,
+        });
+    }
+
+    return {
+        assignmentId: updatedAssignment.id,
+        title: updatedAssignment.title,
+        description: updatedAssignment.description,
+        dueDate: updatedAssignment.dueDate,
+        totalProblems: problems.length,
     };
 };
 
@@ -91,6 +176,14 @@ export const getTutorAssignmentDetails = async ({ assignmentId, teacherId }) => 
             name: assignment.class.name,
         },
         totalProblems: assignment.problems.length,
+        problems: assignment.problems.map((instance) => ({
+            problemInstanceId: instance.id,
+            problemId: instance.problemId,
+            params: instance.params,
+            latex: instance.latex,
+            answer: instance.answer,
+            problem: instance.problem,
+        })),
         stats: {
             totalStudents,
             submitted,

@@ -12,6 +12,7 @@ import {
     submitStudentAssignmentController,
 } from './controllers/studentAssignments.controller.js';
 import {
+    addProblemsToTutorAssignmentController,
     createTutorAssignmentController,
     getTeacherClassStudentsController,
     getTutorAssignmentAnalyticsController,
@@ -21,15 +22,19 @@ import {
     gradeTutorStudentSubmissionController,
     listTutorClassAssignmentsController,
     triggerTutorAutoGradeController,
+    updateTutorAssignmentController,
 } from './controllers/tutorAssignments.controller.js';
 import {
     createProblemController,
     generateProblemsController,
     getProblemController,
+    listProblemTemplatesController,
 } from './controllers/sharedAssignments.controller.js';
+import { addAssignmentProblemsSchema } from './dtos/addAssignmentProblems.dto.js';
 import { createAssignmentSchema } from './dtos/createAssignment.dto.js';
 import { gradeSubmissionSchema } from './dtos/gradeSubmission.dto.js';
 import { createProblemSchema, generateProblemsSchema } from './dtos/problem.dto.js';
+import { updateAssignmentSchema } from './dtos/updateAssignment.dto.js';
 import { submitAssignmentSchema } from './dtos/submitAssignment.dto.js';
 
 const router = Router();
@@ -57,6 +62,20 @@ router.post(
     createTutorAssignmentController
 );
 router.get('/tutor/classes/:classId/assignments', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), listTutorClassAssignmentsController);
+router.post(
+    '/assignments/:assignmentId/problems',
+    isAuthenticated,
+    roleCheck('TEACHER', 'ADMIN'),
+    zodValidator(addAssignmentProblemsSchema),
+    addProblemsToTutorAssignmentController
+);
+router.patch(
+    '/tutor/assignments/:assignmentId',
+    isAuthenticated,
+    roleCheck('TEACHER', 'ADMIN'),
+    zodValidator(updateAssignmentSchema),
+    updateTutorAssignmentController
+);
 router.get('/tutor/assignments/:assignmentId', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), getTutorAssignmentDetailsController);
 router.get(
     '/tutor/assignments/:assignmentId/submissions',
@@ -82,6 +101,7 @@ router.get('/tutor/assignments/:assignmentId/analytics', isAuthenticated, roleCh
 
 // Shared/core routes
 router.post('/problems', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), zodValidator(createProblemSchema), createProblemController);
+router.get('/problems/templates', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), listProblemTemplatesController);
 router.get('/problems/:id', isAuthenticated, getProblemController);
 router.post('/ai/generate-problems', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), zodValidator(generateProblemsSchema), generateProblemsController);
 router.get('/classes/:classId/students', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), getTeacherClassStudentsController);

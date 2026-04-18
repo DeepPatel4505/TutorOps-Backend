@@ -32,9 +32,9 @@ export const enrollStudentController = async (req, res, next) => {
     try {
         const teacherId = req.session.user.id;
         const { classId } = req.params;
-        const { studentId } = req.body;
-        const result = await enrollStudentToClass({ teacherId, classId, studentId });
-        return res.status(201).json(new ApiResponse(result, 'Student enrolled successfully'));
+        const { studentIds } = req.body;
+        const result = await enrollStudentToClass({ teacherId, classId, studentIds });
+        return res.status(201).json(new ApiResponse(result, 'Students enrolled successfully'));
     } catch (err) {
         return next(err instanceof ApiError ? err : ApiError.internal('Failed to enroll student', err, req.originalUrl));
     }

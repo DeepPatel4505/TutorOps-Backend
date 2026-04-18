@@ -22,6 +22,7 @@ router.post(
     zodValidator(enrollStudentSchema),
     enrollStudentController
 );
+router.post('/classes/:classId/enroll', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), zodValidator(enrollStudentSchema), enrollStudentController);
 router.get('/tutor/classes/:classId/students', isAuthenticated, roleCheck('TEACHER', 'ADMIN'), listClassStudentsController);
 
 export { router };

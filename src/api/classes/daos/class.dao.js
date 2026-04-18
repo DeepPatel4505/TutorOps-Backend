@@ -45,6 +45,22 @@ export const findUserById = async ({ userId }) => {
     });
 };
 
+export const findUsersByIds = async ({ userIds }) => {
+    return prisma.user.findMany({
+        where: {
+            id: {
+                in: userIds,
+            },
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+        },
+    });
+};
+
 export const findEnrollment = async ({ classId, studentId }) => {
     return prisma.enrollment.findFirst({
         where: {
@@ -59,6 +75,24 @@ export const createEnrollment = async ({ classId, studentId }) => {
         data: {
             classId,
             studentId,
+        },
+    });
+};
+
+export const createEnrollmentsBulk = async ({ classId, studentIds }) => {
+    return prisma.enrollment.createMany({
+        data: studentIds.map((studentId) => ({ classId, studentId })),
+        skipDuplicates: true,
+    });
+};
+
+export const getEnrollmentsForClassAndStudents = async ({ classId, studentIds }) => {
+    return prisma.enrollment.findMany({
+        where: {
+            classId,
+            studentId: {
+                in: studentIds,
+            },
         },
     });
 };
