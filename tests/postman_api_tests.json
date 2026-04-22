@@ -1,0 +1,747 @@
+{
+  "info": {
+    "_postman_id": "31a959f7-bf72-4dd7-9f77-3e2d97ad6b0e",
+    "name": "TutorOps Assignments Flow",
+    "description": "Postman collection for TutorOps backend assignment flow (student + tutor + shared routes).\n\nImportant:\n1) Backend uses session + CSRF. Call GET /api/auth/csrf-token before every POST and send header X-CSRF-Token: {{csrfToken}}.\n2) Postman cookie jar should keep tutorops_session cookie automatically.\n3) Tutor and student sessions are different. Re-login before running each role folder.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "csrfToken", "value": "" },
+    { "key": "teacherUsername", "value": "teacher_demo" },
+    { "key": "teacherEmail", "value": "teacher@example.com" },
+    { "key": "teacherPassword", "value": "Teacher@123" },
+    { "key": "studentUsername", "value": "student_demo" },
+    { "key": "studentEmail", "value": "student@example.com" },
+    { "key": "studentPassword", "value": "Student@123" },
+    { "key": "className", "value": "Algebra Class A" },
+    { "key": "classId", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "problemId", "value": "" },
+    { "key": "assignmentId", "value": "" },
+    { "key": "problemInstanceId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Common Setup",
+      "item": [
+        {
+          "name": "Get CSRF Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf-token"]
+            },
+            "description": "Fetch CSRF token and session cookie. Run this before any POST request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.csrfToken) {",
+                  "  pm.collectionVariables.set('csrfToken', json.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "00A - Bootstrap Users and Class",
+      "item": [
+        {
+          "name": "Get CSRF Token (Bootstrap)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf-token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.csrfToken) {",
+                  "  pm.collectionVariables.set('csrfToken', json.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Teacher (role=1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{teacherUsername}}\",\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\",\n  \"role\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "If user already exists, this may return 400. You can ignore and continue with login."
+          }
+        },
+        {
+          "name": "Register Student (role=0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{studentUsername}}\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"role\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Captures studentId when registration succeeds."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.collectionVariables.set('studentId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Student (Capture studentId fallback)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.user?.id;",
+                  "if (id) pm.collectionVariables.set('studentId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get CSRF Token (Bootstrap Tutor Login)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf-token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.csrfToken) {",
+                  "  pm.collectionVariables.set('csrfToken', json.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Tutor",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Create Class",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{className}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.collectionVariables.set('classId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Tutor Classes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes"]
+            }
+          }
+        },
+        {
+          "name": "Enroll Student in Class",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes/{{classId}}/enroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes", "{{classId}}", "enroll"]
+            },
+            "description": "Requires valid studentId variable."
+          }
+        },
+        {
+          "name": "List Students in Class",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes/{{classId}}/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes", "{{classId}}", "students"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Tutor Flow",
+      "item": [
+        {
+          "name": "Get CSRF Token (Tutor)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf-token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.csrfToken) {",
+                  "  pm.collectionVariables.set('csrfToken', json.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Tutor",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Create Reusable Problem",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"templateCode\": \"2 + 2 = ?\",\n  \"topic\": \"Arithmetic\",\n  \"difficulty\": \"easy\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/problems",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "problems"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.collectionVariables.set('problemId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Problem By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/problems/{{problemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "problems", "{{problemId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Algebra Basics\",\n  \"description\": \"Solve all questions\",\n  \"dueDate\": \"2026-04-20T23:59:00Z\",\n  \"problems\": [\n    { \"problemId\": \"{{problemId}}\", \"points\": 5 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes/{{classId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes", "{{classId}}", "assignments"]
+            },
+            "description": "Set classId first. Class must belong to logged-in teacher."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.assignmentId;",
+                  "if (id) pm.collectionVariables.set('assignmentId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Class Assignments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes/{{classId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes", "{{classId}}", "assignments"]
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Details (Tutor)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Submissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}", "submissions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json?.data?.submissions?.[0]?.studentId;",
+                  "if (first) pm.collectionVariables.set('studentId', first);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Class Students",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/classes/{{classId}}/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "classes", "{{classId}}", "students"]
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}", "analytics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Student Flow",
+      "item": [
+        {
+          "name": "Get CSRF Token (Student)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf-token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.csrfToken) {",
+                  "  pm.collectionVariables.set('csrfToken', json.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Student Assignments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "assignments"]
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Details (Student)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/assignments/{{assignmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "assignments", "{{assignmentId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const first = json?.data?.problems?.[0]?.problemInstanceId;",
+                  "if (first) pm.collectionVariables.set('problemInstanceId', first);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/assignments/{{assignmentId}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "assignments", "{{assignmentId}}", "start"]
+            }
+          }
+        },
+        {
+          "name": "Submit Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"problemInstanceId\": \"{{problemInstanceId}}\",\n      \"answer\": \"4\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/student/assignments/{{assignmentId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "assignments", "{{assignmentId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/assignments/{{assignmentId}}/result",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "assignments", "{{assignmentId}}", "result"]
+            }
+          }
+        },
+        {
+          "name": "Get Student Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "reports"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Tutor Grading",
+      "item": [
+        {
+          "name": "Get CSRF Token (Tutor Re-Login)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/csrf-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "csrf-token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.csrfToken) {",
+                  "  pm.collectionVariables.set('csrfToken', json.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Tutor Again",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Student Submission",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}/submissions/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}", "submissions", "{{studentId}}"]
+            },
+            "description": "Set studentId manually or copy from Get Assignment Submissions response."
+          }
+        },
+        {
+          "name": "Grade Student Submission",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grades\": [\n    {\n      \"problemInstanceId\": \"{{problemInstanceId}}\",\n      \"score\": 4,\n      \"feedback\": \"Almost correct\"\n    }\n  ],\n  \"finalScore\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}/submissions/{{studentId}}/grade",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}", "submissions", "{{studentId}}", "grade"]
+            }
+          }
+        },
+        {
+          "name": "Auto Grade Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}/auto-grade",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}", "auto-grade"]
+            }
+          }
+        },
+        {
+          "name": "Get Assignment Analytics (After Grading)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tutor/assignments/{{assignmentId}}/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tutor", "assignments", "{{assignmentId}}", "analytics"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
